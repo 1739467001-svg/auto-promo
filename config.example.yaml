@@ -1,0 +1,49 @@
+# ============================================================
+# auto-promo 配置模板
+# 复制为 config.yaml 后按需修改（config.yaml 已被 .gitignore 忽略）
+# ============================================================
+
+paths:
+  # 你把"已配好中英字幕的视频"丢进这个文件夹
+  input_dir: ./input
+  # 产出（文案 + 三张封面 + 各平台待发布包）输出到这里
+  output_dir: ./output
+  # Playwright 复用的浏览器用户数据目录（保存各平台登录态）
+  # 第一次手动在这个 profile 里把各平台登录好，之后自动复用 cookie
+  browser_profile_dir: ./browser-profiles/default
+
+content:
+  # 写文案用的模型。默认用最强的 Opus 4.8；想省钱可换 claude-sonnet-4-6
+  model: claude-opus-4-8
+  effort: high            # low | medium | high | max
+  # API Key 从环境变量 ANTHROPIC_API_KEY 读取，不要写在这里
+  # 创作者人设/统一口径，会注入到每次生成
+  persona: |
+    我是一个分享"精品外语视频 + 中英双语字幕"的英语学习博主。
+    内容定位：把别人没刷到的优质外语视频，配上我做的中英字幕，做成英语学习素材。
+    底线：转载内容如实标注，不冒充原创骗激励。
+
+cover:
+  # 中文字体路径（容器/Linux 自带文泉驿正黑；macOS 可换 PingFang，Windows 换微软雅黑）
+  font_regular: /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc
+  font_bold: /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc
+  # 每次固定额外产出的三张通用封面比例
+  standard_ratios: ["16:9", "4:3", "3:4"]
+
+publish:
+  # 浏览器自动化总开关
+  enabled: true
+  headless: false          # 发布时建议 false，方便你盯着/处理验证码
+  # 安全闸：默认 false = 只把内容填好、停在发布按钮前，由你点最后一下
+  # 确认流程稳定后再每个平台单独打开 auto_submit
+  auto_submit: false
+  slow_mo_ms: 300          # 每步操作间隔，过快容易被风控
+
+# 各平台开关与个性化（封面风格、文案口吻、是否标转载，见 platforms.py）
+platforms:
+  douyin:        { enabled: true,  auto_submit: false }
+  xiaohongshu:   { enabled: true,  auto_submit: false }
+  shipinhao:     { enabled: true,  auto_submit: false }
+  xigua:         { enabled: false, auto_submit: false }
+  toutiao:       { enabled: false, auto_submit: false }
+  bilibili:      { enabled: false, auto_submit: false }

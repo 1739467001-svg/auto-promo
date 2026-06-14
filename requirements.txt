@@ -1,0 +1,8 @@
+# 核心依赖
+anthropic>=0.69.0          # 调 Claude API 写文案/标题
+Pillow>=10.0.0             # 生成封面图（叠字）
+imageio-ffmpeg>=0.5.1      # 自带 ffmpeg，用于从视频抽帧（无需系统装 ffmpeg）
+PyYAML>=6.0                # 读配置
+requests>=2.31.0           # 抓取文案来源链接
+beautifulsoup4>=4.12.0     # 解析链接网页正文
+playwright>=1.45.0         # 浏览器自动化发布（需另跑 playwright install chromium）
