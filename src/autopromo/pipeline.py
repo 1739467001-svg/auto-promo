@@ -74,17 +74,29 @@ def _write_outputs(
         json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    # 便于人工复制的 Markdown
-    md = [f"# 发布物料 · {video.path.name}", "", f"来源链接：{link}", ""]
-    md.append(f"封面文案：**{bundle.cover_title}** / {bundle.cover_english} · {bundle.cover_chinese}")
+    # 便于人工上传时"照着发"的 Markdown 清单
+    platform_cover = covers_index.get("platform", {})
+    md = [f"# 发布物料 · {video.path.name}", ""]
+    md.append(f"- 视频：`{video.path}`")
+    md.append(f"- 来源链接：{link}")
+    md.append(f"- 封面文案：**{bundle.cover_title}** / {bundle.cover_english} · {bundle.cover_chinese}")
+    md.append("")
+    md.append("> 每个平台一段：用对应封面图 + 标题 + 简介。标题/简介可直接复制。")
     md.append("")
     for k, c in bundle.per_platform.items():
         p = get_profile(k)
+        cover_path = platform_cover.get(k, "")
+        cover_name = Path(cover_path).name if cover_path else "（无）"
         md.append(f"## {p.name}（{k}）")
-        md.append(f"- 标题：{c.title}")
-        md.append(f"- 简介：\n\n{c.caption_with_tags()}\n")
+        md.append(f"- 🖼 封面：`covers/{cover_name}`（{p.ratio}）")
         if p.mark_repost:
-            md.append("- ⚠️ 平台侧请勾选「转载/非原创」并填写来源")
+            md.append("- ⚠️ 发布时请勾选「转载/非原创」并填写来源链接")
+        md.append(f"- 📌 标题（≤{p.title_max}字）：")
+        md.append("")
+        md.append(f"```\n{c.title}\n```")
+        md.append("- 📝 简介：")
+        md.append("")
+        md.append(f"```\n{c.caption_with_tags()}\n```")
         md.append("")
     (run_dir / "content.md").write_text("\n".join(md), encoding="utf-8")
 
