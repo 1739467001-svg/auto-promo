@@ -9,6 +9,7 @@ from pathlib import Path
 from .config import Config
 from .content.generator import GeneratedBundle, generate
 from .content.source import fetch_source
+from .content.spec import load_spec, write_template
 from .cover.builder import build_covers
 from .models import PublishPackage, VideoAsset
 from .platforms import get_profile
@@ -107,27 +108,35 @@ def produce(
     link: str,
     platform_keys: list[str],
     video_path: str | None = None,
+    content_spec: str | None = None,
     log=print,
 ) -> tuple[list[PublishPackage], Path]:
-    """产出阶段：返回 (待发布包列表, 本次运行输出目录)。"""
+    """产出阶段：返回 (待发布包列表, 本次运行输出目录)。
+
+    content_spec 提供时（推荐：在 Claude Code 里我直接写好文案），读取该 JSON，
+    跳过抓链接与调用 API，全程不联网、不用 API Key。
+    """
     video = find_video(cfg.input_dir, video_path)
     log(f"识别到视频：{video.path}")
 
-    log("抓取文案来源链接…")
-    source = fetch_source(link)
-    if not source.fetched_ok:
-        log(f"  · 链接抓取未成功：{source.note}（将基于视频与人设生成）")
-
-    log(f"调用 {cfg.content_model} 生成各平台文案…")
-    bundle = generate(
-        source=source,
-        video_name=video.path.name,
-        platform_keys=platform_keys,
-        persona=cfg.persona,
-        model=cfg.content_model,
-        effort=cfg.content_effort,
-        api_key=cfg.anthropic_api_key,
-    )
+    if content_spec:
+        log(f"读取已写好的文案：{content_spec}（跳过抓链接与 API）")
+        bundle = load_spec(content_spec, platform_keys)
+    else:
+        log("抓取文案来源链接…")
+        source = fetch_source(link)
+        if not source.fetched_ok:
+            log(f"  · 链接抓取未成功：{source.note}（将基于视频与人设生成）")
+        log(f"调用 {cfg.content_model} 生成各平台文案…")
+        bundle = generate(
+            source=source,
+            video_name=video.path.name,
+            platform_keys=platform_keys,
+            persona=cfg.persona,
+            model=cfg.content_model,
+            effort=cfg.content_effort,
+            api_key=cfg.anthropic_api_key,
+        )
 
     run_dir = cfg.output_dir / datetime.now().strftime("%Y%m%d_%H%M%S")
     covers_dir = run_dir / "covers"

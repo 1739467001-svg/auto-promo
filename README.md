@@ -26,30 +26,56 @@ input/ 里的视频  ──┐
 
 ---
 
+## 两种用法
+
+| 用法 | 文案谁写 | 需要 API Key | 需要浏览器自动化 |
+|---|---|---|---|
+| **A. 在 Claude Code App 里用（推荐）** | 我（App 里的 Claude）直接写 | ❌ 不需要 | ❌ 你手动上传 |
+| B. 全自动 | 工作流调 Claude API 写 | ✅ 需要 | ✅ Playwright 发布 |
+
+下面先讲推荐的 A，再讲 B。
+
+---
+
 ## 安装
 
-需要 Python 3.10+。
+需要 Python 3.10+。最小安装（用法 A，只产出文案+封面、手动上传）：
 
 ```bash
-pip install -r requirements.txt
-playwright install chromium          # 下载浏览器内核（首次必做）
-```
-
-设置 Claude API Key（写文案用，**不要**写进配置文件）：
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-复制配置模板并按需修改：
-
-```bash
+pip install Pillow imageio-ffmpeg PyYAML
 cp config.example.yaml config.yaml
+```
+
+> 用法 A **不需要** `anthropic`（不调 API）、也**不需要** `playwright`（不自动发布）。
+> 想用全自动（B）再装全量：`pip install -r requirements.txt && playwright install chromium`，并 `export ANTHROPIC_API_KEY=sk-ant-...`。
+
+---
+
+## 用法 A：在 Claude Code App 里用（推荐）
+
+文案由我直接写，无需 API Key，你拿到封面+文案后手动上传。流程：
+
+1. 把配好中英字幕的视频丢进 `input/`，告诉我**链接**和**要发的平台**，让我启动。
+2. 我用 WebFetch 看链接、按各平台要求**写好一份文案 JSON**（`content.json`）。
+3. 我帮你跑：
+   ```bash
+   python -m autopromo run --content content.json --platforms douyin,xiaohongshu,bilibili --no-publish
+   ```
+4. 去 `output/<时间戳>/` 拿 `content.md`（每个平台：用哪张封面 + 标题 + 简介）和 `covers/`，手动上传。
+
+想自己照着填文案，可先生成带各平台要求的模板：
+
+```bash
+python -m autopromo template --platforms douyin,xiaohongshu,bilibili --out content.json
 ```
 
 ---
 
-## 首次：登录各平台
+## 用法 B：全自动（调 API 写文案 + 浏览器自动发布）
+
+需先 `pip install -r requirements.txt && playwright install chromium` 和 `export ANTHROPIC_API_KEY=...`。
+
+### 首次：登录各平台
 
 工作流复用一个**持久化浏览器 profile**（路径见 `config.yaml` 的 `browser_profile_dir`）。
 第一次需要在这个 profile 里手动把各平台登录好，cookie 会被保存，之后自动复用：
@@ -78,7 +104,7 @@ python -m autopromo platforms
 
 ---
 
-## 启动工作流
+### 启动工作流（全自动）
 
 把配好中英字幕的视频丢进 `input/`，然后发"启动指令"：
 

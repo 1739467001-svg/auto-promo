@@ -11,8 +11,6 @@ import json
 import re
 from dataclasses import dataclass
 
-import anthropic
-
 from ..models import PlatformContent, SourceMaterial
 from ..platforms import get_profile
 
@@ -125,6 +123,8 @@ def generate(
     effort: str = "high",
     api_key: str | None = None,
 ) -> GeneratedBundle:
+    import anthropic  # 惰性导入：只用 --content 文案路径时无需安装此包
+
     client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
     prompt = _build_prompt(source, video_name, platform_keys, persona)
 

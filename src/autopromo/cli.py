@@ -41,7 +41,11 @@ def cmd_run(args) -> int:
     from .pipeline import produce
 
     packages, run_dir = produce(
-        cfg, link=args.link, platform_keys=platform_keys, video_path=args.video
+        cfg,
+        link=args.link,
+        platform_keys=platform_keys,
+        video_path=args.video,
+        content_spec=args.content,
     )
 
     do_publish = args.publish and cfg.publish_enabled
@@ -75,6 +79,18 @@ def cmd_login(args) -> int:
     return 0
 
 
+def cmd_template(args) -> int:
+    cfg = load_config(args.config)
+    platform_keys = _resolve_platforms(cfg, args.platforms)
+    from .pipeline import write_template
+
+    out = write_template(args.out, platform_keys)
+    print(f"已生成文案模板：{out}")
+    print("按里面 _guidance 的各平台要求填好 cover 与 platforms，再用：")
+    print(f"  python -m autopromo run --content {out} --platforms {','.join(platform_keys)} --no-publish")
+    return 0
+
+
 def cmd_platforms(args) -> int:
     print("支持的平台：")
     for k, p in PLATFORMS.items():
@@ -89,7 +105,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_run = sub.add_parser("run", help="启动工作流：产出文案/封面并发布")
-    p_run.add_argument("--link", required=True, help="文案来源超链接")
+    p_run.add_argument("--link", default="", help="文案来源超链接（仅记录用；--content 模式可省）")
+    p_run.add_argument("--content", default=None,
+                       help="已写好的文案 JSON（推荐：在 Claude Code 里我直接写好），提供后跳过抓链接与 API")
     p_run.add_argument("--platforms", default=None, help="逗号分隔的平台，缺省用配置里启用的")
     p_run.add_argument("--video", default=None, help="指定视频文件，缺省取 input 里最新的")
     p_run.add_argument("--no-publish", dest="publish", action="store_false",
@@ -101,6 +119,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_login = sub.add_parser("login", help="打开某平台登录页，首次手动登录")
     p_login.add_argument("platform", help="平台 key，如 douyin")
     p_login.set_defaults(func=cmd_login)
+
+    p_tpl = sub.add_parser("template", help="生成文案模板（含各平台要求），照着填")
+    p_tpl.add_argument("--platforms", default=None, help="逗号分隔的平台，缺省用配置里启用的")
+    p_tpl.add_argument("--out", default="content.json", help="模板输出路径")
+    p_tpl.set_defaults(func=cmd_template)
 
     p_plat = sub.add_parser("platforms", help="列出支持的平台")
     p_plat.set_defaults(func=cmd_platforms)
