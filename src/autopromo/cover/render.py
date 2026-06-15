@@ -37,6 +37,32 @@ def _font(path: str, size: int) -> ImageFont.FreeTypeFont:
         return ImageFont.load_default()
 
 
+def _fit_title(
+    font_path: str, text: str, max_w: int, start_size: int, max_lines: int
+) -> tuple[ImageFont.FreeTypeFont, list[str]]:
+    """自动缩放标题字号：从 start_size 往下试，直到折行不超过 max_lines。"""
+    size = start_size
+    floor = max(int(start_size * 0.55), 24)
+    while size >= floor:
+        font = _font(font_path, size)
+        lines = _wrap(font, text, max_w)
+        if len(lines) <= max_lines:
+            return font, lines
+        size -= max(2, start_size // 20)
+    # 仍超行：用最小字号并硬截断到 max_lines
+    font = _font(font_path, floor)
+    return font, _wrap(font, text, max_w)[:max_lines]
+
+
+def _region_luminance(img: Image.Image, top_frac: float) -> float:
+    """底部区域平均亮度 0~255，用于自适应加重遮罩。"""
+    w, h = img.size
+    region = img.convert("L").crop((0, int(h * top_frac), w, h))
+    hist = region.histogram()
+    total = sum(hist) or 1
+    return sum(i * c for i, c in enumerate(hist)) / total
+
+
 def _text_w(font: ImageFont.FreeTypeFont, s: str) -> int:
     if not s:
         return 0
@@ -205,9 +231,10 @@ def render_cover(
     sub_size = int(title_size * 0.5)
     badge_size = int(title_size * 0.42)
 
-    f_title = _font(font_path, title_size)
     f_sub = _font(font_path, sub_size)
     f_badge = _font(font_path, badge_size)
+    # 标题自动缩放：最多 3 行，放不下就缩字号，避免被截断
+    f_title, title_lines = _fit_title(font_path, title, w - margin * 2, title_size, 3)
 
     if style.layout == "card":
         # 顶部白色卡片写标题（小红书笔记风）
@@ -217,7 +244,6 @@ def render_cover(
         draw = ImageDraw.Draw(canvas)
         y = margin
         y += _draw_badge((draw), (margin, y), style.badge_text, f_badge, style.accent) + int(margin * 0.5)
-        title_lines = _wrap(f_title, title, w - margin * 2)[:3]
         y += _draw_lines(draw, margin, y, title_lines, f_title, style.title_color)
         # 卡片底部一条强调色细线 + 双语钩子
         line_y = card_h - int(margin * 0.4)
@@ -227,17 +253,18 @@ def render_cover(
             _draw_lines(draw, margin, card_h + int(margin * 0.4),
                         _wrap(f_sub, sub, w - margin * 2)[:2], f_sub, (255, 255, 255), stroke=(0, 0, 0))
     else:
-        # bottom：底部暗化 + 压字
-        canvas.alpha_composite(_bottom_scrim(size, style.scrim))
+        # bottom：底部暗化 + 压字。按底图底部亮度自适应加重遮罩，亮画面也压得住字
+        lum = _region_luminance(base, top_frac=0.55)
+        scrim = min(255, style.scrim + int((lum / 255) * 90))
+        canvas.alpha_composite(_bottom_scrim(size, scrim))
         draw = ImageDraw.Draw(canvas)
         # 顶部徽章
         _draw_badge(draw, (margin, margin), style.badge_text, f_badge, style.accent)
 
         # 自底向上排：先算各块高度
-        title_lines = _wrap(f_title, title, w - margin * 2)[:3]
         sub_text = f"{english}".strip()
         sub_cn = f"{chinese}".strip()
-        title_h = int(title_size * 1.18) * len(title_lines)
+        title_h = int(f_title.size * 1.18) * len(title_lines)
         sub_lines = _wrap(f_sub, sub_text, w - margin * 2)[:1] if sub_text else []
         cn_lines = _wrap(f_sub, sub_cn, w - margin * 2)[:1] if sub_cn else []
         sub_h = int(sub_size * 1.25) * (len(sub_lines) + len(cn_lines))
